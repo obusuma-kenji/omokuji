@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フラクタルくじ引き</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background 0.5s ease;
+            overflow: hidden;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+        }
+        
+        h1 { 
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            color: #333;
+        }
+        
+        .kuji-box {
+            width: 200px;
+            height: 250px;
+            margin: 0 auto 40px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .box {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #8B4513, #A0522D);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            transition: transform 0.1s;
+        }
+        
+        .box.shake {
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+        
+        .stick {
+            position: absolute;
+            width: 15px;
+            height: 180px;
+            background: linear-gradient(to right, #CD853F, #DEB887);
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .box.pulling .stick {
+            top: -80px;
+        }
+        
+        .instruction {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        #result-container {
+            min-height: 200px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        #result-container.show {
+            opacity: 1;
+        }
+        
+        #fortune {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #222;
+            background: rgba(255,255,255,0.95);
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        #message {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            color: #333;
+            padding: 25px;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.95);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .reset-btn {
+            margin-top: 30px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 25px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .reset-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎯 フラクタルくじ引き</h1>
+    
+    <div id="kuji-section">
+        <div class="instruction">箱をクリックして、くじを引こう</div>
+        <div class="kuji-box" onclick="drawKuji()">
+            <div class="box" id="box">
+                <div class="stick"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="result-container">
+        <div id="fortune"></div>
+        <div id="message"></div>
+        <button class="reset-btn" onclick="reset()">もう一度引く</button>
+    </div>
+</div>
+
+<script>
+// AudioContext for sound effects
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioContext = new AudioContext();
+
+// ドラムロール音
+function playDrumroll() {
+    const duration = 1.5;
+    const now = audioContext.currentTime;
+    
+    for(let i = 0; i < 30; i++) {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        
+        osc.frequency.value = 100 + Math.random() * 50;
+        osc.type = 'square';
+        
+        const time = now + (i * duration / 30);
+        gain.gain.setValueAtTime(0.1, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+        
+        osc.start(time);
+        osc.stop(time + 0.05);
+    }
+}
+
+// 結果音（当たり）
+function playResultSound() {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    
+    const now = audioContext.currentTime;
+    
+    osc.frequency.setValueAtTime(523, now); // C5
+    osc.frequency.setValueAtTime(659, now + 0.1); // E5
+    osc.frequency.setValueAtTime(784, now + 0.2); // G5
+    
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+    
+    osc.start(now);
+    osc.stop(now + 0.4);
+}
+
+const fortunes = [
+    {
+        title: "鏡の法則",
+        message: "あなたがイライラしてるその人、10年前のあなたそっくりですよ",
+        bg: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    },
+    {
+        title: "お金のブロック",
+        message: "お金がないのは、あなたが「金持ち=悪」って思い込んでるだけ",
+        bg: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+    },
+    {
+        title: "被害者意識",
+        message: "「私は悪くない」って言い続けてる限り、人生は変わりません",
+        bg: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
+    },
+    {
+        title: "完璧主義",
+        message: "完璧を求めてるのは、本当は「私は不完全」って信じてるから",
+        bg: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
+    },
+    {
+        title: "親への怒り",
+        message: "親を許せないのは、自分を許してないから。順番が逆ですよ",
+        bg: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
+    },
+    {
+        title: "恋愛パターン",
+        message: "また同じタイプを好きになった？それ、あなたが引き寄せてます",
+        bg: "linear-gradient(135deg, #30cfd0 0%, #330867 100%)"
+    },
+    {
+        title: "努力の罠",
+        message: "頑張ってるのに報われない？「苦労=美徳」を手放す時です",
+        bg: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)"
+    },
+    {
+        title: "承認欲求",
+        message: "他人の評価が気になる？それ、自分で自分を認めてないだけ",
+        bg: "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)"
+    },
+    {
+        title: "自己犠牲",
+        message: "「私さえ我慢すれば」は、相手を弱者扱いしてるのと同じです",
+        bg: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)"
+    },
+    {
+        title: "過去の執着",
+        message: "過去を変えたい？今を変えれば、過去の意味が書き換わります",
+        bg: "linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)"
+    },
+    {
+        title: "孤独感",
+        message: "寂しいのは、自分で自分を置き去りにしてるからですよ",
+        bg: "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)"
+    },
+    {
+        title: "嫉妬の正体",
+        message: "あの人が羨ましい？それ、あなたも持ってるものに気づいてないだけ",
+        bg: "linear-gradient(135deg, #f77062 0%, #fe5196 100%)"
+    },
+    {
+        title: "不安の真実",
+        message: "未来が不安なのは、今この瞬間から逃げてる証拠です",
+        bg: "linear-gradient(135deg, #c471f5 0%, #fa71cd 100%)"
+    },
+    {
+        title: "怒りの投影",
+        message: "あの人のここが許せない？それ、自分の中の同じ部分です",
+        bg: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    },
+    {
+        title: "依存体質",
+        message: "誰かに依存したくなる？自分を信じてないサインですよ",
+        bg: "linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)"
+    }
+];
+
+let isDrawing = false;
+
+function drawKuji() {
+    if(isDrawing) return;
+    isDrawing = true;
+    
+    // AudioContext resume (for mobile)
+    audioContext.resume();
+    
+    const box = document.getElementById('box');
+    const kujiSection = document.getElementById('kuji-section');
+    const resultContainer = document.getElementById('result-container');
+    
+    // くじを引くアニメーション
+    box.classList.add('pulling');
+    playDrumroll();
+    
+    setTimeout(() => {
+        box.classList.remove('pulling');
+        box.classList.add('shake');
+    }, 500);
+    
+    setTimeout(() => {
+        box.classList.remove('shake');
+        
+        // ランダムに結果を選択
+        const result = fortunes[Math.floor(Math.random() * fortunes.length)];
+        
+        // 背景を変更
+        document.body.style.background = result.bg;
+        
+        // 結果を表示
+        document.getElementById('fortune').innerText = result.title;
+        document.getElementById('message').innerText = result.message;
+        
+        kujiSection.classList.add('hidden');
+        resultContainer.classList.add('show');
+        
+        playResultSound();
+        isDrawing = false;
+    }, 2000);
+}
+
+function reset() {
+    const kujiSection = document.getElementById('kuji-section');
+    const resultContainer = document.getElementById('result-container');
+    
+    resultContainer.classList.remove('show');
+    
+    setTimeout(() => {
+        kujiSection.classList.remove('hidden');
+        document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }, 500);
+}
+
+// 初期背景
+document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+</script>
+</body>
+</html>
