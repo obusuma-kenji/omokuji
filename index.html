@@ -40,6 +40,8 @@
             margin: 0 auto 40px;
             position: relative;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
         
         .box {
@@ -50,6 +52,10 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             position: relative;
             transition: transform 0.1s;
+        }
+        
+        .box:active {
+            transform: scale(0.98);
         }
         
         .box.shake {
@@ -126,6 +132,8 @@
             border-radius: 25px;
             transition: all 0.3s;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
         
         .reset-btn:hover {
@@ -134,7 +142,84 @@
             box-shadow: 0 6px 20px rgba(0,0,0,0.3);
         }
         
+        .reset-btn:active {
+            transform: translateY(0);
+        }
+        
         .hidden { display: none; }
+        
+        /* スマホ対応 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                width: 95%;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+                margin-bottom: 30px;
+            }
+            
+            .kuji-box {
+                width: 150px;
+                height: 200px;
+                margin: 0 auto 30px;
+            }
+            
+            .stick {
+                width: 12px;
+                height: 140px;
+            }
+            
+            .instruction {
+                font-size: 1rem;
+                margin-bottom: 20px;
+            }
+            
+            #fortune {
+                font-size: 2rem;
+                padding: 12px 20px;
+                margin: 15px 0;
+            }
+            
+            #message {
+                font-size: 1.1rem;
+                padding: 20px;
+                line-height: 1.7;
+            }
+            
+            .reset-btn {
+                padding: 10px 25px;
+                font-size: 0.95rem;
+                margin-top: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .kuji-box {
+                width: 120px;
+                height: 160px;
+            }
+            
+            .stick {
+                width: 10px;
+                height: 110px;
+            }
+            
+            #fortune {
+                font-size: 1.6rem;
+                padding: 10px 15px;
+            }
+            
+            #message {
+                font-size: 1rem;
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -142,8 +227,8 @@
     <h1>🎯 フラクタルくじ引き</h1>
     
     <div id="kuji-section">
-        <div class="instruction">箱をクリックして、くじを引こう</div>
-        <div class="kuji-box" onclick="drawKuji()">
+        <div class="instruction">箱をタップして、くじを引こう</div>
+        <div class="kuji-box" id="kuji-trigger">
             <div class="box" id="box">
                 <div class="stick"></div>
             </div>
@@ -342,6 +427,13 @@ function reset() {
 
 // 初期背景
 document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+
+// イベントリスナー設定
+document.getElementById('kuji-trigger').addEventListener('click', drawKuji);
+document.getElementById('kuji-trigger').addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    drawKuji();
+});
 </script>
 </body>
 </html>
